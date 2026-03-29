@@ -1,7 +1,4 @@
 # 📒 Phonebook App
-
-A terminal-based phonebook application built with **Python** and **MySQL**. Supports full CRUD operations — add, search, update, and delete contacts — with a clean tabular display.
-
 ---
 
 ## Features
