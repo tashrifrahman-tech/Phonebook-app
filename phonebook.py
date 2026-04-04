@@ -5,7 +5,7 @@ from tabulate import tabulate
 conn = mysql.connector.connect(
     host="localhost",
     user="root",
-    password= #Add your MySQLPassword
+    password="" #Enter Your Password
 )
 cursor = conn.cursor()
 
@@ -31,6 +31,13 @@ try:
 except mysql.connector.errors.DatabaseError:
     pass  # Column already exists
 conn.commit()
+
+
+# ── Helpers ────────────────────────────────────────────────────────────────────
+
+def number_rows(results):
+    """Prepend a sequential S.No to each row — always 1, 2, 3... regardless of deleted IDs."""
+    return [(i, *row) for i, row in enumerate(results, start=1)]
 
 
 # ── Menus ──────────────────────────────────────────────────────────────────────
@@ -71,11 +78,17 @@ def display_delete_menu():
 
 def add_contact():
     name = input("Enter contact name: ").strip().title()
+
+    # Duplicate check — block if exact name already exists
+    cursor.execute("SELECT COUNT(*) FROM contacts WHERE name = %s", (name,))
+    if cursor.fetchone()[0] > 0:
+        print(f"Contact '{name}' already exists. Use Update to modify it.")
+        return
+
     phone_numbers = []
     emails = []
 
     while True:
-        # FIX: removed erroneous int() wrapping the prompt string
         phone = input("Enter phone number (or press Enter to finish): ").strip()
         if not phone:
             break
@@ -85,7 +98,6 @@ def add_contact():
         email = input("Enter email address (or press Enter to finish): ").strip()
         if not email:
             break
-        # FIX: was `email.append(email)` — should be `emails.append(email)`
         emails.append(email)
 
     if not phone_numbers and not emails:
@@ -106,39 +118,41 @@ def add_contact():
 
 # ── Search Functions ───────────────────────────────────────────────────────────
 
+HEADERS = ["S.No", "Name", "Phone(s)", "Email(s)", "Address"]
+
 def search_by_name():
     name = input("Enter name to search: ").strip().title()
     cursor.execute(
-        "SELECT id, name, phone, email, address FROM contacts WHERE name LIKE %s",
+        "SELECT name, phone, email, address FROM contacts WHERE name LIKE %s ORDER BY name",
         (f"%{name}%",)
     )
     results = cursor.fetchall()
     if results:
-        print(tabulate(results, headers=["S.No", "Name", "Phone(s)", "Email(s)", "Address"], tablefmt="grid"))
+        print(tabulate(number_rows(results), headers=HEADERS, tablefmt="grid"))
     else:
         print("No contact found with that name.")
 
 def search_by_number():
     number = input("Enter phone number to search: ").strip()
     cursor.execute(
-        "SELECT id, name, phone, email, address FROM contacts WHERE phone LIKE %s",
+        "SELECT name, phone, email, address FROM contacts WHERE phone LIKE %s ORDER BY name",
         (f"%{number}%",)
     )
     results = cursor.fetchall()
     if results:
-        print(tabulate(results, headers=["S.No", "Name", "Phone(s)", "Email(s)", "Address"], tablefmt="grid"))
+        print(tabulate(number_rows(results), headers=HEADERS, tablefmt="grid"))
     else:
         print("No contact found with that phone number.")
 
 def search_by_email():
     email = input("Enter email address to search: ").strip()
     cursor.execute(
-        "SELECT id, name, phone, email, address FROM contacts WHERE email LIKE %s",
+        "SELECT name, phone, email, address FROM contacts WHERE email LIKE %s ORDER BY name",
         (f"%{email}%",)
     )
     results = cursor.fetchall()
     if results:
-        print(tabulate(results, headers=["S.No", "Name", "Phone(s)", "Email(s)", "Address"], tablefmt="grid"))
+        print(tabulate(number_rows(results), headers=HEADERS, tablefmt="grid"))
     else:
         print("No contact found with that email.")
 
@@ -219,10 +233,10 @@ def delete_by_email():
 # ── View All Contacts ──────────────────────────────────────────────────────────
 
 def view_all_contacts():
-    cursor.execute("SELECT id, name, phone, email, address FROM contacts ORDER BY name")
+    cursor.execute("SELECT name, phone, email, address FROM contacts ORDER BY name")
     results = cursor.fetchall()
     if results:
-        print(tabulate(results, headers=["S.No", "Name", "Phone(s)", "Email(s)", "Address"], tablefmt="grid"))
+        print(tabulate(number_rows(results), headers=HEADERS, tablefmt="grid"))
     else:
         print("No contacts found.")
 
